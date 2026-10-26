@@ -1,94 +1,165 @@
 # Plantify 🌿
 
-**Plantify** is an eco-friendly mobile application designed to help users take care of their indoor plants, featuring an integrated AI component for diagnosing plant conditions and diseases based on text symptom descriptions.
-
----
+Plantify is an eco-friendly Android application designed to help users take care of their indoor plants. It combines an AI-powered plant diagnostics feature with a personal plant catalog.
 
 ## 🚀 Key Features
 
-- **AI Symptom Diagnostics:** Describe plant issues in natural language and get instant analysis from artificial intelligence with detailed categories, severity levels, and recommendations.
-- **Care Organization:** Maintain plant profiles and track regular care routines.
-- **Client-Server Architecture:** Reliable request processing, data validation, and error handling on the server side.
-
----
+- **AI Plant Diagnostics:** Describe plant symptoms in natural language and receive an AI-generated analysis, including a problem category, severity level, and recommendations.
+- **Personal Plant Catalog:** Add and view plant profiles, organize plant information, and remove plants from the catalog.
+- **Local Data Persistence:** Catalog data is stored locally on the device, allowing it to remain available after restarting the application.
+- **Client-Server Architecture:** The mobile application communicates with a FastAPI backend for plant diagnostics.
+- **Input Validation and Error Handling:** Validate user input and handle backend and AI service errors.
 
 ## 🛠 Tech Stack
 
 ### Mobile Client (`plantify-mobile`)
+
 - **Language:** Kotlin
 - **UI Framework:** Jetpack Compose
-- **Networking Layer:** Retrofit2, OkHttp3
+- **Networking:** Retrofit 2, OkHttp 3
 - **JSON Parsing:** Gson
+- **Local Storage:** SharedPreferences for the plant catalog
 
 ### Backend Service (`plantify-backend`)
-- **Language:** Python 3.10+
-- **Framework:** FastAPI, Uvicorn
-- **Data Validation:** Pydantic
-- **AI Integration:** Google Gemini API (`google-genai` SDK) with Structured Outputs
-- **Configuration:** `python-dotenv`
 
----
+- **Language:** Python 3.10+
+- **Framework:** FastAPI
+- **Server:** Uvicorn
+- **Data Validation:** Pydantic
+- **AI Integration:** Google Gemini API using the `google-genai` SDK
+- **Configuration:** `python-dotenv`
 
 ## 📂 Project Structure
 
 ```text
 plantify-app/
-├── plantify-backend/          # Server-side (Python / FastAPI)
-│   ├── main.py                # Server logic, prompt engineering, and endpoints
-│   ├── requirements.txt       # Python dependencies
-│   └── .env                   # Local configurations and API key (isolated)
+├── plantify-backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── .env                  # Local environment variables; do not commit
+│   └── .gitignore
 │
-└── plantify-mobile/           # Mobile app (Android Studio / Kotlin)
-    └── app/src/main/java/com/example/plantify/
-        ├── MainActivity.kt    # Main screen and UI (Jetpack Compose)
-        ├── PlantApiService.kt # Retrofit configuration and backend communication
-        └── PlantModels.kt     # Request and response data models
-⚙️ How to Run Locally
-1. Backend Setup
-Navigate to the backend directory:
+└── plantify-mobile/
+    ├── gradlew
+    ├── gradlew.bat
+    └── app/
+        └── src/main/java/com/example/plantify/
+            ├── MainActivity.kt
+            ├── PlantDiagnosisScreen.kt
+            ├── PlantApiService.kt
+            ├── PlantModels.kt
+            └── PlantCatalogRepository.kt
+```
 
-Bash
+*Note: The mobile file list is representative. Adjust it to match the actual files in your project.*
+
+## ⚙️ How to Run Locally
+
+### 1. Backend Setup
+
+Open a terminal and navigate to the backend directory:
+
+```bash
 cd plantify-backend
-Install the required dependencies:
+```
 
-Bash
+Install the required Python dependencies:
+
+```bash
 pip install -r requirements.txt
-Create a .env file in the root of the plantify-backend folder and add your Google Gemini API key:
+```
 
-Фрагмент коду
+Create a `.env` file in the `plantify-backend` directory and add your Google Gemini API key:
+
+```env
 GEMINI_API_KEY=your_gemini_api_key_here
-Run the Uvicorn server:
+```
 
-Bash
+Replace the placeholder with your own API key. Do not share or commit the real key.
+
+Start the backend server:
+
+```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
-The server will be available at: http://localhost:8000 (Swagger UI: http://localhost:8000/docs).
+```
 
-2. Mobile App Setup
-Open the plantify-mobile project in Android Studio.
+The backend should now be accessible at:
 
-Check the PlantApiService.kt file and make sure BASE_URL points to your PC's local network IP address (e.g., http://192.168.0.107:8000/).
+- **API base URL:** `http://localhost:8000`
+- **Swagger UI:** `http://localhost:8000/docs`
+- **Health check:** `http://localhost:8000/health`
 
-Run the project on an Android emulator or physical device.
+Keep the backend terminal running while using AI diagnostics in the mobile application.
 
-📌 API Endpoints Overview
-1. System Health Check
-GET /health
+### 2. Mobile App Setup
 
-Response: {"status": "ok"}
+1. Open the `plantify-mobile` project in Android Studio.
+2. Wait for Gradle synchronization to finish.
+3. Open `PlantApiService.kt` and check the configured `BASE_URL`.
+4. Set the URL to an address accessible from your Android device or emulator.
+5. Run the application on the selected device.
 
-2. AI Plant Diagnostics
-POST /api/v1/diagnose
+**Important:** `localhost` refers to the device itself when used by an Android application. For a physical device, use your computer's local network IP address, for example:
 
-Example Request:
+```text
+http://192.168.0.107:8000/
+```
 
-JSON
+Replace the example address with your computer's actual IP address. The phone and computer generally need to be on the same network, and the firewall must allow the connection.
+
+For an Android emulator, use the appropriate host address for your emulator configuration.
+
+The plant catalog is stored locally and does not require the backend to be running. AI diagnostics require the backend and a valid Gemini API key.
+
+## 🌱 Plant Catalog
+
+The personal plant catalog allows users to organize information about their plants.
+
+- Add plants to the catalog.
+- View saved plant profiles.
+- Remove plants from the catalog.
+- Keep catalog data locally on the device between application restarts.
+
+The catalog uses local storage and does not require a separate backend endpoint. Its data is not automatically synchronized between devices or uploaded to a server.
+
+Uninstalling the application or clearing its data may remove the saved catalog.
+
+## 📌 API Endpoints
+
+### 1. System Health Check
+
+**Method:** `GET`
+
+**Endpoint:** `/health`
+
+Example response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+This endpoint checks whether the backend is responding. It does not necessarily verify that the Gemini API is available.
+
+### 2. AI Plant Diagnostics
+
+**Method:** `POST`
+
+**Endpoint:** `/api/v1/diagnose`
+
+Example request:
+
+```json
 {
   "plant_name": "Monstera",
   "symptoms": "yellow leaves and brown spots"
 }
-Example Response:
+```
 
-JSON
+Example response:
+
+```json
 {
   "status": "success",
   "category": "Chlorosis due to overwatering",
@@ -99,9 +170,43 @@ JSON
     "Apply a balanced fertilizer for foliage plants."
   ]
 }
-🔒 Security
-All secret keys (GEMINI_API_KEY) are isolated in the .env environment and are excluded from version control.
+```
 
-Server-side error handling is implemented to hide technical stack traces from users.
+The response above is an example. Actual diagnostic results depend on the submitted information and the AI service.
 
-The application requests only essential permissions (INTERNET).
+### Error Handling
+
+The backend uses HTTP error responses for invalid requests and service failures. Depending on the error, the client may receive responses such as:
+
+- `400 Bad Request` — invalid input detected by application logic.
+- `422 Unprocessable Entity` — request validation failed.
+- `502 Bad Gateway` — an upstream AI request failed.
+- `503 Service Unavailable` — the AI service is unavailable.
+
+Refer to the backend implementation and Swagger UI for the exact response details.
+
+## 🧪 Testing and Verification
+
+Before considering the application ready, verify the following scenarios:
+
+- The backend starts successfully and `/health` returns a successful response.
+- A valid plant name and symptom description produce a diagnostic response when the AI service is available.
+- Invalid or incomplete input is handled appropriately.
+- Backend or AI service failures are handled without crashing the application.
+- A plant can be added to and displayed in the catalog.
+- A saved plant remains in the catalog after restarting the application.
+- A plant can be removed from the catalog.
+- The catalog remains usable when the backend is unavailable.
+- The existing AI diagnostics feature continues to work after catalog changes.
+
+Record the actual results of the tests you run. Do not mark a test as passed unless it has been executed.
+
+## 🔒 Security
+
+- Store the Gemini API key in the backend's local `.env` file.
+- Exclude `.env` from version control using `.gitignore`.
+- Never commit real API keys, passwords, or other secrets.
+- Keep error handling appropriate for users; avoid exposing sensitive configuration or unnecessary internal details.
+- The Android application requires network access to communicate with the backend.
+
+**Important:** A `.gitignore` rule does not automatically remove a secret that has already been committed. Check Git tracking status before pushing changes to a remote repository.
