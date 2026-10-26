@@ -44,7 +44,7 @@ def health_check():
 @app.post("/api/v1/diagnose", response_model=PlantDiagnosisResponse, tags=["Diagnostics"])
 def diagnose_plant(request: PlantDiagnosisRequest):
     try:
-        # Оновлений промпт із суворою перевіркою на валідність даних
+        # Промпт із суворою перевіркою на валідність даних
         prompt = f"""
         You are a strict expert agronomist and botanist. Verify the input data.
         Plant name: {request.plant_name}
