@@ -1,25 +1,29 @@
 # Technical Decisions
 
-## Existing stack
+## Existing technology stack
 
-The project uses Kotlin and Jetpack Compose for Android, Retrofit for HTTP communication, FastAPI and Pydantic for the backend, and Google Gemini for AI-based diagnosis.
+The project uses Kotlin and Jetpack Compose for Android, Retrofit and OkHttp for networking, FastAPI and Pydantic for the backend, and Google Gemini for AI-based diagnosis.
 
 These choices reflect the existing implementation.
 
-## Local plant catalog
+## Local personal plant catalog
 
-Decision: implement the personal plant catalog entirely within the Android application.
+**Decision:** implement catalog management within the Android application.
 
-Reason: the feature only needs local add, view, delete, and persistence behavior. A remote database, authentication, and new API endpoints would add unnecessary complexity.
+**Reason:** adding, viewing, editing, and deleting personal plant entries does not require AI diagnosis or remote processing. A backend service, authentication, and cloud database would add complexity beyond the current MVP requirements.
 
-Decision: use SharedPreferences for a small catalog stored as JSON.
+**Decision:** use SharedPreferences with JSON serialization for the catalog, provided this matches the actual repository implementation.
 
-Reason: the project already includes Gson through Retrofit's JSON converter, and SharedPreferences is available on Android without adding a separate persistence library.
+**Reason:** this approach is suitable for a small local catalog and can reuse the existing Gson dependency. It avoids adding a separate persistence library.
 
-Decision: keep the existing diagnosis API unchanged.
+**Decision:** keep catalog operations independent of the diagnosis API.
 
-Reason: catalog management does not require AI diagnosis or backend communication.
+**Reason:** catalog management does not require changes to the existing diagnosis request or response models.
 
 ## Incremental development
 
-Implement the feature in small steps, inspect `git diff`, and test each completed step before committing it.
+Implement changes in small, focused steps. Inspect `git diff`, run relevant checks, and update the Knowledge Base after implementation.
+
+## Testing and security
+
+Use synthetic or anonymized test data. Never commit API keys or other secrets. Do not report a test as successful unless it has actually been executed.

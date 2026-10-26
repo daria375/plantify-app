@@ -4,11 +4,13 @@
 
 Plantify is an Android application that provides AI-generated information about possible plant problems based on a plant name and a text description of symptoms.
 
+The application also includes a personal plant catalog stored locally on the Android device.
+
 ## Target users
 
-People who grow houseplants or other plants and want initial guidance about plant care and possible problems.
+People who grow houseplants or other plants and want initial guidance about plant care and possible problems, as well as a convenient way to maintain a personal list of plants.
 
-## Existing user scenario
+## Existing diagnosis scenario
 
 1. The user enters a plant name and symptoms.
 2. The Android application sends a request to the backend.
@@ -16,20 +18,31 @@ People who grow houseplants or other plants and want initial guidance about plan
 4. The backend returns a problem category, severity, and recommendations.
 5. The Android application displays the result or an error message.
 
-## Planned feature for Lab 3
+## Personal plant catalog
 
-Add a local personal plant catalog. Users will be able to add plants, view the list, optionally save a short note, and remove plants.
+The Android application provides a local catalog for managing plant entries.
 
-The catalog will be stored on the Android device. It will not require accounts, a remote database, or new backend endpoints.
+The catalog supports:
+- Adding a plant with a required name.
+- Viewing saved plants.
+- Editing an existing plant entry.
+- Removing a plant.
+- Saving an optional note, if supported by the current data model.
+- Persisting catalog data locally between application launches.
+
+Catalog operations do not require the FastAPI backend or Gemini. The catalog is stored on the Android device and does not provide cloud synchronization.
 
 ## Technology stack
 
 - Android: Kotlin and Jetpack Compose.
-- Networking: Retrofit, OkHttp, and Gson.
+- Networking: Retrofit and OkHttp.
+- JSON serialization: Gson.
 - Backend: Python, FastAPI, and Pydantic.
 - AI: Google Gemini through the Google Gen AI SDK.
-- Planned local storage: Android SharedPreferences.
+- Local catalog storage: SharedPreferences, if confirmed by the current implementation.
 
 ## MVP boundaries
 
-The app does not currently demonstrate user authentication, cloud synchronization, diagnosis history, or image-based plant diagnosis.
+The application does not currently provide user authentication, cloud synchronization, diagnosis history, or image-based plant diagnosis.
+
+The local catalog is intended for personal use on a single device.
