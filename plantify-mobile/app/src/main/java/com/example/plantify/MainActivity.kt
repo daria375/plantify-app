@@ -1,6 +1,5 @@
 package com.example.plantify
 
-import android.app.DatePickerDialog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -106,9 +105,7 @@ fun PlantDiagnosisScreen() {
     val historyRepository = remember(context) { PlantDiagnosisHistoryRepository(context) }
     var plantNameText by remember { mutableStateOf("") }
     var symptomsText by remember { mutableStateOf("") }
-    var resultText by remember {
-        mutableStateOf("The result will appear here after the diagnostics...")
-    }
+    var resultText by remember { mutableStateOf("The result will appear here after the diagnostics...") }
     var isLoading by remember { mutableStateOf(false) }
 
     Column(
@@ -138,78 +135,154 @@ fun PlantDiagnosisScreen() {
 
         Button(
             onClick = {
-                val cleanedPlantName = plantNameText.trim()
-                val cleanedSymptoms = symptomsText.trim()
-
-                if (cleanedPlantName.length < 2 || cleanedSymptoms.length < 3) {
+                val cleanName = plantNameText.trim()
+                val cleanSymptoms = symptomsText.trim()
+                if (cleanName.length < 2 || cleanSymptoms.length < 3) {
                     resultText = "Enter a plant name (at least 2 characters) and symptoms (at least 3 characters)."
-                    return@Button
-                }
-
-                isLoading = true
-                resultText = "We are analyzing..."
-                val request = PlantDiagnosisRequest(
-                    plant_name = cleanedPlantName,
-                    symptoms = cleanedSymptoms
-                )
-
-                PlantApiService.create().diagnosePlant(request)
-                    .enqueue(object : Callback<PlantDiagnosisResponse> {
-                        override fun onResponse(
-                            call: Call<PlantDiagnosisResponse>,
-                            response: Response<PlantDiagnosisResponse>
-                        ) {
+                } else {
+                    try {
+                        // Save first, so the request is not lost if the network/backend fails.
+                        val item = historyRepository.savePendingRequest(cleanName, cleanSymptoms)
+                        isLoading = true
+                        resultText = "Request saved. Sending it to the AI service..."
+                        sendSavedDiagnosis(context, historyRepository, item.id) { updated, message ->
                             isLoading = false
-                            val data = response.body()
-                            val isCompleteSuccess = response.isSuccessful &&
-                                    data != null &&
-                                    data.status.equals("success", ignoreCase = true) &&
-                                    data.category.isNotBlank() &&
-                                    data.severity.isNotBlank() &&
-                                    data.recommendations.isNotEmpty() &&
-                                    data.recommendations.all { it.isNotBlank() }
-
-                            if (isCompleteSuccess && data != null) {
-                                resultText = formatDiagnosisResult(data)
-                                try {
-                                    historyRepository.saveSuccessfulDiagnosis(
-                                        plantName = cleanedPlantName,
-                                        symptoms = cleanedSymptoms,
-                                        result = data
+                            resultText = if (updated?.status == DiagnosisStatus.READY) {
+                                formatDiagnosisResult(
+                                    PlantDiagnosisResponse(
+                                        status = "success",
+                                        category = updated.category,
+                                        severity = updated.severity,
+                                        recommendations = updated.recommendations
                                     )
-                                    resultText += "\n\nSaved to diagnosis history."
-                                } catch (exception: Exception) {
-                                    // Keep the successful result visible even if local persistence fails.
-                                    resultText += "\n\nWarning: the result could not be saved to history."
-                                }
+                                ) + "\n\nSaved to diagnosis history."
                             } else {
-                                resultText = when {
-                                    !response.isSuccessful -> when (response.code()) {
-                                        400 -> "The entered data is invalid."
-                                        422 -> "Check the plant name and symptom description."
-                                        502 -> "The AI service returned an invalid response."
-                                        503 -> "The AI service is temporarily unavailable."
-                                        else -> "Server error: ${response.code()}"
-                                    }
-                                    else -> "The server returned an incomplete or invalid diagnosis. It was not saved."
-                                }
+                                "${message}\n\nThe request remains in diagnosis history. You can retry it there."
                             }
                         }
-
-                        override fun onFailure(call: Call<PlantDiagnosisResponse>, t: Throwable) {
-                            isLoading = false
-                            resultText = "Network error. The diagnosis was not saved to history."
-                        }
-                    })
+                    } catch (exception: Exception) {
+                        resultText = exception.message ?: "Could not save the request locally."
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading
         ) {
-            Text(if (isLoading) "Processing..." else "Diagnose")
+            Text(if (isLoading) "Processing..." else "Diagnose now")
         }
 
+        OutlinedButton(
+            onClick = {
+                val cleanName = plantNameText.trim()
+                val cleanSymptoms = symptomsText.trim()
+                if (cleanName.length < 2 || cleanSymptoms.length < 3) {
+                    resultText = "Enter a plant name (at least 2 characters) and symptoms (at least 3 characters)."
+                } else {
+                    try {
+                        historyRepository.savePendingRequest(cleanName, cleanSymptoms)
+                        resultText = "Request saved as Pending. Open Diagnosis History and tap Send when you are ready."
+                    } catch (exception: Exception) {
+                        resultText = exception.message ?: "Could not save the request locally."
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
+        ) {
+            Text("Save for later (offline queue)")
+        }
+
+        Text(
+            "Use ‘Save for later’ when you do not have internet or want to send the request later.",
+            style = MaterialTheme.typography.bodySmall
+        )
         HorizontalDivider()
         Text(text = resultText, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+private fun sendSavedDiagnosis(
+    context: android.content.Context,
+    repository: PlantDiagnosisHistoryRepository,
+    itemId: String,
+    onStarted: () -> Unit = {},
+    onFinished: (PlantDiagnosisHistoryItem?, String) -> Unit
+) {
+    val sendingItem = try {
+        repository.markSending(itemId)
+    } catch (exception: Exception) {
+        onFinished(null, exception.message ?: "Could not update the request status.")
+        return
+    }
+
+    // A null result means the item is missing, already sending, or already completed.
+    if (sendingItem == null) {
+        onFinished(repository.getById(itemId), "This request is already being sent or has already completed.")
+        return
+    }
+
+    onStarted()
+    val request = PlantDiagnosisRequest(
+        plant_name = sendingItem.plantName,
+        symptoms = sendingItem.symptoms
+    )
+
+    try {
+        PlantApiService.create().diagnosePlant(request)
+            .enqueue(object : Callback<PlantDiagnosisResponse> {
+                override fun onResponse(
+                    call: Call<PlantDiagnosisResponse>,
+                    response: Response<PlantDiagnosisResponse>
+                ) {
+                    val data = response.body()
+                    val completeSuccess = response.isSuccessful &&
+                            data != null &&
+                            data.status.equals("success", ignoreCase = true) &&
+                            data.category.isNotBlank() &&
+                            data.severity.isNotBlank() &&
+                            data.recommendations.isNotEmpty() &&
+                            data.recommendations.all { it.isNotBlank() }
+
+                    try {
+                        if (completeSuccess && data != null) {
+                            val ready = repository.markReady(itemId, data)
+                            onFinished(ready, "Diagnosis completed.")
+                        } else {
+                            val errorMessage = when {
+                                !response.isSuccessful -> when (response.code()) {
+                                    400 -> "The entered data is invalid. Edit the request or try again."
+                                    422 -> "Check the plant name and symptom description."
+                                    502 -> "The AI service returned an invalid response. You can retry."
+                                    503 -> "The AI service is temporarily unavailable. You can retry later."
+                                    else -> "Server error: ${response.code()}. You can retry."
+                                }
+                                else -> "The server returned an incomplete diagnosis. You can retry."
+                            }
+                            repository.markError(itemId, errorMessage)
+                            onFinished(repository.getById(itemId), errorMessage)
+                        }
+                    } catch (exception: Exception) {
+                        val message = exception.message ?: "Could not update the saved diagnosis."
+                        try { repository.markError(itemId, message) } catch (_: Exception) { }
+                        onFinished(repository.getById(itemId), message)
+                    }
+                }
+
+                override fun onFailure(call: Call<PlantDiagnosisResponse>, t: Throwable) {
+                    val message = "Network error: ${t.localizedMessage ?: "cannot reach the backend"}. You can retry when the connection is available."
+                    try {
+                        repository.markError(itemId, message)
+                    } catch (exception: Exception) {
+                        onFinished(repository.getById(itemId), exception.message ?: message)
+                        return
+                    }
+                    onFinished(repository.getById(itemId), message)
+                }
+            })
+    } catch (exception: Exception) {
+        val message = exception.message ?: "Could not start the request. You can retry."
+        try { repository.markError(itemId, message) } catch (_: Exception) { }
+        onFinished(repository.getById(itemId), message)
     }
 }
 
@@ -218,20 +291,32 @@ private fun formatDiagnosisResult(data: PlantDiagnosisResponse): String {
     return "Category: ${data.category}\nSeverity: ${data.severity}\n\nRecommendations:\n$recommendationsText"
 }
 
+private fun statusLabel(status: String): String = when (status) {
+    DiagnosisStatus.PENDING -> "Pending"
+    DiagnosisStatus.SENDING -> "Sending"
+    DiagnosisStatus.READY -> "Ready"
+    DiagnosisStatus.ERROR -> "Error - you can retry"
+    else -> status
+}
+
 @Composable
 fun PlantDiagnosisHistoryScreen() {
     val context = LocalContext.current
     val repository = remember(context) { PlantDiagnosisHistoryRepository(context) }
     val history = remember { mutableStateListOf<PlantDiagnosisHistoryItem>() }
+    val sendingIds = remember { mutableStateListOf<String>() }
     var isLoaded by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
     var selectedItem by remember { mutableStateOf<PlantDiagnosisHistoryItem?>(null) }
     var itemToDelete by remember { mutableStateOf<PlantDiagnosisHistoryItem?>(null) }
+    var showClearConfirmation by remember { mutableStateOf(false) }
 
     fun reloadHistory() {
         try {
+            val items = repository.getAll()
             history.clear()
-            history.addAll(repository.getAll())
+            history.addAll(items)
+            selectedItem = selectedItem?.let { selected -> items.firstOrNull { it.id == selected.id } }
             message = ""
         } catch (exception: Exception) {
             message = exception.message ?: "Could not load diagnosis history."
@@ -240,24 +325,35 @@ fun PlantDiagnosisHistoryScreen() {
         }
     }
 
+    fun sendItem(id: String) {
+        if (id in sendingIds) return
+        sendingIds.add(id)
+        reloadHistory()
+        sendSavedDiagnosis(context, repository, id, onStarted = { reloadHistory() }) { _, resultMessage ->
+            sendingIds.remove(id)
+            message = resultMessage
+            reloadHistory()
+        }
+    }
+
     LaunchedEffect(repository) { reloadHistory() }
 
     if (itemToDelete != null) {
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
-            title = { Text("Delete diagnosis?") },
-            text = { Text("This saved diagnosis will be permanently removed from this device.") },
+            title = { Text("Delete request?") },
+            text = { Text("This request and its saved result will be removed from this device.") },
             confirmButton = {
                 TextButton(onClick = {
                     val target = itemToDelete
                     if (target != null) {
                         try {
-                            history.clear()
-                            history.addAll(repository.delete(target.id))
+                            repository.delete(target.id)
                             if (selectedItem?.id == target.id) selectedItem = null
-                            message = "Diagnosis deleted."
+                            reloadHistory()
+                            message = "History item deleted."
                         } catch (exception: Exception) {
-                            message = exception.message ?: "Could not delete this diagnosis."
+                            message = exception.message ?: "Could not delete this item."
                         }
                     }
                     itemToDelete = null
@@ -265,6 +361,30 @@ fun PlantDiagnosisHistoryScreen() {
             },
             dismissButton = {
                 TextButton(onClick = { itemToDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showClearConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            title = { Text("Clear diagnosis history?") },
+            text = { Text("All saved requests and results will be permanently removed from this device.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    try {
+                        repository.clear()
+                        history.clear()
+                        selectedItem = null
+                        message = "Diagnosis history cleared."
+                    } catch (exception: Exception) {
+                        message = exception.message ?: "Could not clear history."
+                    }
+                    showClearConfirmation = false
+                }) { Text("Clear all") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmation = false }) { Text("Cancel") }
             }
         )
     }
@@ -278,65 +398,103 @@ fun PlantDiagnosisHistoryScreen() {
     ) {
         Text("Diagnosis History", style = MaterialTheme.typography.titleLarge)
 
+        if (message.isNotBlank()) {
+            Text(
+                message,
+                color = if (message.contains("Could not", ignoreCase = true) || message.contains("error", ignoreCase = true))
+                    MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
         if (selectedItem != null) {
             val item = selectedItem!!
-            Text("Diagnosis details", style = MaterialTheme.typography.titleMedium)
+            Text("Request details", style = MaterialTheme.typography.titleMedium)
             Text("Date: ${formatTimestamp(item.createdAt)}")
-            Text("Status: ${item.status}")
+            Text("Status: ${statusLabel(item.status)}")
             HorizontalDivider()
             Text("Plant", style = MaterialTheme.typography.titleSmall)
             Text(item.plantName)
             Text("Symptoms", style = MaterialTheme.typography.titleSmall)
             Text(item.symptoms)
-            Text("Category", style = MaterialTheme.typography.titleSmall)
-            Text(item.category)
-            Text("Severity", style = MaterialTheme.typography.titleSmall)
-            Text(item.severity)
-            Text("Recommendations", style = MaterialTheme.typography.titleSmall)
-            item.recommendations.forEach { Text("• $it") }
+
+            if (item.status == DiagnosisStatus.READY) {
+                Text("Category", style = MaterialTheme.typography.titleSmall)
+                Text(item.category)
+                Text("Severity", style = MaterialTheme.typography.titleSmall)
+                Text(item.severity)
+                Text("Recommendations", style = MaterialTheme.typography.titleSmall)
+                item.recommendations.forEach { Text("• $it") }
+            } else {
+                Text(item.errorMessage ?: when (item.status) {
+                    DiagnosisStatus.PENDING -> "This request is saved locally and has not been sent yet."
+                    DiagnosisStatus.SENDING -> "The request is currently being processed."
+                    else -> "The request was not completed. You can try sending it again."
+                })
+            }
+
+            if (item.status == DiagnosisStatus.PENDING || item.status == DiagnosisStatus.ERROR) {
+                Button(
+                    onClick = { sendItem(item.id) },
+                    enabled = item.id !in sendingIds,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(if (item.id in sendingIds) "Sending..." else "Send / Retry") }
+            }
             Button(onClick = { selectedItem = null }, modifier = Modifier.fillMaxWidth()) {
                 Text("Back to history")
             }
             OutlinedButton(
                 onClick = { itemToDelete = item },
+                enabled = item.id !in sendingIds,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Delete this diagnosis") }
+            ) { Text("Delete this item") }
         } else {
-            if (message.isNotBlank()) {
-                Text(
-                    message,
-                    color = if (message.startsWith("Could not")) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            if (!isLoaded) {
+                Text("Loading diagnosis history...")
+            } else if (history.isEmpty()) {
+                Text("Your diagnosis history is empty. Run a diagnosis or save a request for later.")
+            } else {
+                Text("Saved requests and diagnoses (${history.size})", style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(
+                    onClick = { showClearConfirmation = true },
+                    enabled = sendingIds.isEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Clear all history") }
 
-            when {
-                !isLoaded -> Text("Loading diagnosis history...")
-                history.isEmpty() -> Text("Your diagnosis history is empty. Complete a successful diagnosis to save it here.")
-                else -> {
-                    Text("Saved diagnoses (${history.size})", style = MaterialTheme.typography.titleMedium)
-                    history.forEach { item ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { selectedItem = item }
+                history.forEach { item ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedItem = item }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(item.plantName, style = MaterialTheme.typography.titleMedium)
+                            Text(item.plantName, style = MaterialTheme.typography.titleMedium)
+                            Text("Status: ${statusLabel(item.status)}")
+                            if (item.status == DiagnosisStatus.READY) {
                                 Text("${item.category} • ${item.severity}")
-                                Text("Symptoms: ${item.symptoms}", style = MaterialTheme.typography.bodyMedium)
-                                Text(formatTimestamp(item.createdAt), style = MaterialTheme.typography.bodySmall)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    OutlinedButton(onClick = { itemToDelete = item }) {
-                                        Text("Delete")
-                                    }
+                            } else {
+                                Text(item.errorMessage ?: item.symptoms, style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Text("Symptoms: ${item.symptoms}", style = MaterialTheme.typography.bodyMedium)
+                            Text(formatTimestamp(item.createdAt), style = MaterialTheme.typography.bodySmall)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (item.status == DiagnosisStatus.PENDING || item.status == DiagnosisStatus.ERROR) {
+                                    Button(
+                                        onClick = { sendItem(item.id) },
+                                        enabled = item.id !in sendingIds,
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text(if (item.id in sendingIds) "Sending..." else "Send / Retry") }
                                 }
+                                OutlinedButton(
+                                    onClick = { itemToDelete = item },
+                                    enabled = item.id !in sendingIds,
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Delete") }
                             }
                         }
                     }
@@ -368,8 +526,7 @@ fun PlantCatalogScreen() {
             plants.addAll(repository.loadPlants())
             message = "Your plants are saved on this device."
         } catch (exception: Exception) {
-            message = exception.message
-                ?: "Could not load the catalog. Your saved data may be unavailable."
+            message = exception.message ?: "Could not load the catalog. Your saved data may be unavailable."
         } finally {
             isLoaded = true
         }
@@ -493,3 +650,4 @@ fun PlantCatalogScreen() {
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
+

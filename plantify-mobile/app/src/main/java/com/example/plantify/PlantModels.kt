@@ -15,21 +15,28 @@ data class PlantDiagnosisResponse(
 )
 
 // One entry in the personal plant catalog.
-// ID allows entries with identical names to be managed separately.
 data class PlantCatalogItem(
     val id: String,
     val name: String,
     val note: String? = null
 )
 
-// A successfully completed AI diagnosis saved on this device.
+/** One saved diagnosis request and, when available, its result. */
 data class PlantDiagnosisHistoryItem(
     val id: String,
     val createdAt: Long,
     val plantName: String,
     val symptoms: String,
-    val status: String = "ready",
-    val category: String,
-    val severity: String,
-    val recommendations: List<String>
+    val status: String = DiagnosisStatus.PENDING,
+    val category: String = "",
+    val severity: String = "",
+    val recommendations: List<String> = emptyList(),
+    val errorMessage: String? = null
 )
+
+object DiagnosisStatus {
+    const val PENDING = "pending"
+    const val SENDING = "sending"
+    const val READY = "ready"
+    const val ERROR = "error"
+}
