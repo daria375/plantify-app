@@ -51,7 +51,25 @@ Record the actual startup and endpoint results. Do not mark checks as passed unl
 - Verify the empty-state message when no plants are saved.
 - Verify that catalog operations work when the backend is stopped.
 
-## 4. Build and automated tests
+## 4. Diagnosis history functional checks
+
+- Submit a valid diagnosis request and verify that a history entry is created.
+- Save a request for later and verify that it remains in history without being submitted immediately.
+- Verify the `pending` status for a saved request that has not been sent.
+- Submit a saved request and verify that its status changes during processing.
+- Verify that a successful response updates the existing entry with the diagnosis details.
+- Simulate a backend or AI service failure and verify that the entry remains in history with the `error` status.
+- Retry a failed entry and verify that the same entry is updated rather than duplicated.
+- Verify that a request left in the `sending` state is recovered as `error` after restoring the history.
+- Open a history entry and verify its plant name, symptoms, status, and available result or error details.
+- Delete one history entry and verify that other entries remain.
+- Clear the history and confirm that all entries are removed.
+- Verify that the history persists after restarting the application.
+- Stop the backend and verify that saved entries can still be viewed and managed.
+- Verify that submitting or retrying a request requires backend connectivity.
+- Confirm that history operations do not introduce additional HTTP endpoints or change the existing diagnosis API contract.
+
+## 5. Build and automated tests
 
 Run the Android build using the Gradle Wrapper from the correct Android project directory.
 
@@ -65,7 +83,7 @@ Run the available automated tests using the project's actual module and test con
 
 Record the exact commands and their results. If a test cannot be automated, document the manual steps and expected result.
 
-## 5. Git and documentation checks
+## 6. Git and documentation checks
 
 - Inspect `git diff`.
 - Run `git diff --check`.
@@ -75,7 +93,7 @@ Record the exact commands and their results. If a test cannot be automated, docu
 
 Do not expose API keys, passwords, tokens, personal data, medical data, or financial data in test output or documentation.
 
-## 6. Results
+## 7. Results
 
 Record each check as one of:
 

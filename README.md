@@ -5,6 +5,8 @@ Plantify is an eco-friendly Android application designed to help users take care
 ## 🚀 Key Features
 
 - **AI Plant Diagnostics:** Describe plant symptoms in natural language and receive an AI-generated analysis, including a problem category, severity level, and recommendations.
+- **Diagnosis History:** Save diagnosis requests for later, review previous results, inspect entry details, retry failed requests, delete individual entries, and clear the history.
+- **Diagnosis Status Tracking:** Track requests using `pending`, `sending`, `ready`, and `error` statuses.
 - **Personal Plant Catalog:** Add and view plant profiles, organize plant information, and remove plants from the catalog.
 - **Local Data Persistence:** Catalog data is stored locally on the device, allowing it to remain available after restarting the application.
 - **Client-Server Architecture:** The mobile application communicates with a FastAPI backend for plant diagnostics.
@@ -48,6 +50,7 @@ plantify-app/
             ├── PlantDiagnosisScreen.kt
             ├── PlantApiService.kt
             ├── PlantModels.kt
+            ├── PlantDiagnosisHistoryRepository.kt
             └── PlantCatalogRepository.kt
 ```
 
@@ -124,6 +127,26 @@ The catalog uses local storage and does not require a separate backend endpoint.
 
 Uninstalling the application or clearing its data may remove the saved catalog.
 
+## 🕘 Diagnosis History
+
+Plantify stores diagnosis requests and their results locally on the Android device.
+
+The diagnosis history supports:
+
+- Saving a request for later.
+- Tracking request status: `pending`, `sending`, `ready`, or `error`.
+- Viewing previous diagnosis entries and their details.
+- Retrying failed requests without creating duplicate history entries.
+- Deleting individual entries.
+- Clearing all entries after confirmation.
+- Recovering requests interrupted during processing.
+
+History data is stored using `SharedPreferences` and Gson JSON serialization. Saved entries persist between application launches, but clearing application data or uninstalling the app may remove them.
+
+Browsing and managing saved entries does not require the backend to be running. Sending or retrying a diagnosis requires the backend and a valid Gemini API configuration.
+
+The history is local and does not require additional backend endpoints or changes to the existing diagnosis API contract.
+
 ## 📌 API Endpoints
 
 ### 1. System Health Check
@@ -198,6 +221,16 @@ Before considering the application ready, verify the following scenarios:
 - A plant can be removed from the catalog.
 - The catalog remains usable when the backend is unavailable.
 - The existing AI diagnostics feature continues to work after catalog changes.
+- A diagnosis request is saved to history before being sent.
+- A request can be saved for later and submitted afterward.
+- Successful results are saved in the corresponding history entry.
+- Failed requests remain available for retry.
+- Retrying a failed request does not create a duplicate entry.
+- Interrupted requests are recovered with the `error` status.
+- History entries and their details can be viewed.
+- Individual entries can be deleted, and the entire history can be cleared after confirmation.
+- History persists after restarting the application.
+- Saved history can be browsed and managed while the backend is unavailable.
 
 Record the actual results of the tests you run. Do not mark a test as passed unless it has been executed.
 

@@ -52,7 +52,17 @@ The application does not currently provide cloud backup or a dedicated catalog e
 
 **Current decision:** Backup, recovery, and cross-device data transfer are not currently implemented.
 
-## 7. Limited Plant Care Management
+## 7. Local Diagnosis History Limitations
+
+Diagnosis history is stored locally on the Android device. It is not synchronized across devices and is not backed up to a remote server.
+
+Clearing application data or uninstalling the application may result in the loss of saved history entries.
+
+Diagnosis history browsing and management are local operations, but sending or retrying a diagnosis requires the backend and the external AI service to be available.
+
+**Current decision:** the history remains local. Cloud synchronization, export and import, and remote history recovery are outside the current MVP scope.
+
+## 8. Limited Plant Care Management
 
 The catalog is intended for basic plant organization. It is not a complete plant care management system.
 
@@ -60,7 +70,7 @@ Features such as watering reminders, care schedules, plant growth history, and p
 
 **Current decision:** The current implementation focuses on basic catalog operations. Additional care management features are outside the current scope.
 
-## 8. Network Configuration
+## 9. Network Configuration
 
 The Android application must be configured with a backend URL reachable from the selected emulator or physical device.
 
@@ -68,7 +78,7 @@ A URL that works on the development computer may not work on a physical device i
 
 **Current decision:** Backend connectivity is configured for the development environment. Automatic environment detection and production deployment configuration are not currently implemented.
 
-## 9. Limited Automated Test Coverage
+## 10. Limited Automated Test Coverage
 
 Some application scenarios may require manual verification, particularly UI interactions, local catalog persistence, and behavior when external services are unavailable.
 
@@ -80,4 +90,4 @@ The actual level of automated test coverage depends on the tests implemented in 
 
 The limitations listed above are known and documented. They define the current boundaries of the Plantify MVP and are intentionally left unresolved in this development iteration.
 
-They should be reconsidered if the project expands to include production deployment, image-based diagnosis, cloud synchronization, advanced plant care management, or more comprehensive automated testing.
+They should be reconsidered if the project expands to include production deployment, image-based diagnosis, cloud synchronization, advanced plant care management, diagnosis history backup, or more comprehensive automated testing.
