@@ -83,7 +83,28 @@ Run the available automated tests using the project's actual module and test con
 
 Record the exact commands and their results. If a test cannot be automated, document the manual steps and expected result.
 
-## 6. Git and documentation checks
+## 6. Backend Automated Tests
+
+Run the automated backend tests from the `plantify-backend` directory with the project's virtual environment activated.
+
+```powershell
+pytest -v
+
+The tests use FastAPI`s TestClient and dependency overrides to replace the real AI provider with test implementations.
+
+The automated tests cover:
+- Backend health check.
+- Successful diagnosis response.
+- Request validation errors.
+- Invalid plant input.
+- AI provider unavailability.
+- General AI provider errors.
+- Unique request identifiers for separate diagnosis requests.
+The tests do not require real Gemini API calls.
+
+Record the actual test results. Do not mark tests as passed unless they have been executed.
+
+## 7. Git and documentation checks
 
 - Inspect `git diff`.
 - Run `git diff --check`.
@@ -93,7 +114,7 @@ Record the exact commands and their results. If a test cannot be automated, docu
 
 Do not expose API keys, passwords, tokens, personal data, medical data, or financial data in test output or documentation.
 
-## 7. Results
+## 8. Results
 
 Record each check as one of:
 

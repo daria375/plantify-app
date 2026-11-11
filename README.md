@@ -33,13 +33,32 @@ Plantify is an eco-friendly Android application designed to help users take care
 
 ## 📂 Project Structure
 
-```text
 plantify-app/
 ├── plantify-backend/
 │   ├── main.py
 │   ├── requirements.txt
-│   ├── .env                  # Local environment variables; do not commit
-│   └── .gitignore
+│   ├── .env
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── core/
+│   │   └── config.py
+│   ├── api/
+│   │   ├── routes.py
+│   │   └── dependencies.py
+│   ├── schemas/
+│   │   └── diagnosis.py
+│   ├── domain/
+│   │   ├── models.py
+│   │   ├── interfaces.py
+│   │   └── errors.py
+│   ├── services/
+│   │   └── diagnosis_service.py
+│   ├── infrastructure/
+│   │   └── providers/
+│   │       ├── gemini_provider.py
+│   │       └── mock_provider.py
+│   └── tests/
+│       └── test_diagnosis.py
 │
 └── plantify-mobile/
     ├── gradlew
@@ -52,7 +71,6 @@ plantify-app/
             ├── PlantModels.kt
             ├── PlantDiagnosisHistoryRepository.kt
             └── PlantCatalogRepository.kt
-```
 
 *Note: The mobile file list is representative. Adjust it to match the actual files in your project.*
 
@@ -76,9 +94,19 @@ Create a `.env` file in the `plantify-backend` directory and add your Google Gem
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_TIMEOUT_MS=30000
 ```
 
 Replace the placeholder with your own API key. Do not share or commit the real key.
+
+The backend uses centralized configuration in `core/config.py`.
+
+- `GEMINI_API_KEY` — Google Gemini API key.
+- `GEMINI_MODEL` — model used for AI diagnosis.
+- `GEMINI_TIMEOUT_MS` — timeout for Gemini API requests in milliseconds.
+
+The `.env` file contains local configuration and must not be committed to version control. Use `.env.example` as a template.
 
 Start the backend server:
 
@@ -233,6 +261,15 @@ Before considering the application ready, verify the following scenarios:
 - Saved history can be browsed and managed while the backend is unavailable.
 
 Record the actual results of the tests you run. Do not mark a test as passed unless it has been executed.
+
+### Backend Automated Tests
+
+From the `plantify-backend` directory, activate the virtual environment and run:
+
+```powershell
+pytest -v
+
+The backend tests use mock provider implementations and FastAPI dependency overrides. They verify successful responses, input validation, error handling, and request identifier generation without calling the real Gemini API.
 
 ## 🔒 Security
 

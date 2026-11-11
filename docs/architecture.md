@@ -120,6 +120,24 @@ Its responsibilities include:
 
 The backend exposes `GET /health` for a basic health check and `POST /api/v1/diagnose` for plant diagnostics.
 
+The backend uses a layered architecture to separate API handling, application logic, domain definitions, and external integrations.
+
+The backend is organized into the following components:
+
+- `api/` — FastAPI routes and dependency injection.
+- `schemas/` — Pydantic request and response models.
+- `domain/` — domain models, provider interfaces, and application errors.
+- `services/` — application-level diagnosis logic.
+- `infrastructure/providers/` — concrete AI provider implementations.
+- `core/` — centralized application configuration.
+- `tests/` — automated backend tests.
+
+The `DiagnosisService` depends on the `AIProvider` interface rather than a specific AI provider implementation.
+
+`GeminiProvider` implements real AI integration, while `MockProvider` provides predefined results for testing.
+
+FastAPI dependency injection supplies the provider through `get_diagnosis_service()`. This allows tests to replace the real provider with a mock implementation without making external AI API calls.
+
 ### 3.5. AI Service
 
 The application uses the Google Gemini API through the `google-genai` SDK.

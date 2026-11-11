@@ -42,6 +42,28 @@ These choices reflect the existing implementation.
 
 **Reason:** history operations are local. The existing diagnosis endpoint remains responsible for processing diagnosis requests.
 
+## Backend Architecture
+
+**Decision:** separate the backend into API, application service, domain, infrastructure, and configuration layers.
+
+**Reason:** separating responsibilities makes the backend easier to maintain, test, and extend.
+
+**Decision:** define an `AIProvider` interface and provide separate `GeminiProvider` and `MockProvider` implementations.
+
+**Reason:** the application service should not depend directly on a specific external AI provider. This also allows automated tests to run without real Gemini API calls.
+
+**Decision:** use FastAPI dependency injection to provide the diagnosis service and its AI provider.
+
+**Reason:** dependency injection allows provider implementations to be replaced without modifying the API route or application service.
+
+**Decision:** centralize the Gemini API key, model identifier, and request timeout in `core/config.py`.
+
+**Reason:** configuration should be managed in one place instead of being scattered across the backend.
+
+**Decision:** generate a unique `request_id` for each diagnosis request.
+
+**Reason:** request identifiers make it easier to distinguish requests and correlate them with backend logs.
+
 ## Incremental development
 
 Implement changes in small, focused steps. Inspect `git diff`, run relevant checks, and update the Knowledge Base after implementation.
