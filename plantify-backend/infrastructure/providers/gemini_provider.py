@@ -1,12 +1,11 @@
 
 import json
-import os
 
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
+from core.config import settings
 from domain.models import DiagnosisResult
 from domain.errors import (
     InvalidPlantInputError,
@@ -16,9 +15,6 @@ from domain.errors import (
 )
 
 
-load_dotenv()
-
-
 class GeminiDiagnosisData(BaseModel):
     category: str
     severity: str
@@ -26,16 +22,24 @@ class GeminiDiagnosisData(BaseModel):
 
 
 class GeminiProvider:
-
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
+        if not settings.GEMINI_API_KEY:
+            raise RuntimeError(
+                "GEMINI_API_KEY is not configured"
+            )
 
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY is not configured")
+        self.client = genai.Client(
+            api_key=settings.GEMINI_API_KEY,
+            http_options=types.HttpOptions(
+                timeout=settings.GEMINI_TIMEOUT_MS
+            )
+        )
 
-        self.client = genai.Client(api_key=api_key)
-
-    def diagnose(self, plant_name: str, symptoms: str) -> DiagnosisResult:
+    def diagnose(
+        self,
+        plant_name: str,
+        symptoms: str
+    ) -> DiagnosisResult:
 
         prompt = f"""
         You are a strict expert agronomist and botanist.
@@ -58,7 +62,7 @@ class GeminiProvider:
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-3.5-flash-lite",
+                model=settings.GEMINI_MODEL,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -68,7 +72,9 @@ class GeminiProvider:
             )
 
             if not response.text:
-                raise InvalidAIResponseError("Empty AI response")
+                raise InvalidAIResponseError(
+                    "Empty AI response"
+                )
 
             ai_data = json.loads(response.text)
             result = GeminiDiagnosisData.model_validate(ai_data)
@@ -94,7 +100,10 @@ class GeminiProvider:
                 recommendations=result.recommendations
             )
 
-        except (InvalidPlantInputError, InvalidAIResponseError):
+        except (
+            InvalidPlantInputError,
+            InvalidAIResponseError
+        ):
             raise
 
         except Exception as error:

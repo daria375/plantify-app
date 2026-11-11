@@ -131,3 +131,24 @@ def test_ai_provider_error(client):
     )
 
     assert response.status_code == 502
+
+def test_request_id_is_unique(client):
+    first_response = client.post("/api/v1/diagnose", json={
+        "plant_name": "Rose",
+        "symptoms": "Yellow spots on leaves"
+    })
+
+    second_response = client.post("/api/v1/diagnose", json={
+        "plant_name": "Monstera",
+        "symptoms": "Brown edges on leaves"
+    })
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+
+    first_id = first_response.json()["request_id"]
+    second_id = second_response.json()["request_id"]
+
+    assert first_id
+    assert second_id
+    assert first_id != second_id
