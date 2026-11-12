@@ -2,6 +2,28 @@
 
 Plantify is an eco-friendly Android application designed to help users take care of their indoor plants. It combines an AI-powered plant diagnostics feature with a personal plant catalog.
 
+## Lab 5 — Architecture Refactoring
+
+**Selected variant:** B — FastAPI Backend Architecture.
+
+**Selected scenario:** AI-powered plant diagnosis.
+
+The backend was refactored to separate API handling, application logic, domain models and interfaces, and external AI provider integration.
+
+The refactoring introduces an `AIProvider` interface with `GeminiProvider` and `MockProvider` implementations, dependency injection, centralized configuration, and automated tests.
+
+## Initial Architecture Problems
+
+Before refactoring, the backend had the following architectural issues:
+
+1. **Mixed responsibilities:** `main.py` handled HTTP requests, constructed AI prompts, called the Gemini SDK, processed AI responses, and handled provider errors. This made the endpoint responsible for several different tasks.
+
+2. **Direct dependency on the external AI SDK:** the application logic was tightly coupled to Google Gemini, making it difficult to replace the AI provider or test the scenario without external API calls.
+
+3. **Scattered configuration and limited testability:** AI configuration and provider initialization were located alongside application logic. There was no separate provider interface or interchangeable mock implementation.
+
+The refactoring addressed these issues by introducing separate API, service, domain, infrastructure, and configuration components.
+
 ## 🚀 Key Features
 
 - **AI Plant Diagnostics:** Describe plant symptoms in natural language and receive an AI-generated analysis, including a problem category, severity level, and recommendations.
